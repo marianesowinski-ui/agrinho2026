@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgroSim Pro: Alta Fidelidade - Agrinho</title>
+    <style>
+        body {
+            margin: 0; padding: 0; overflow: hidden;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #0c0f0d; color: #eceff1;
+            user-select: none;
+        }
+
+        /* HUD Industrial Cinematográfico */
+        #hud {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 40px;
+            background: linear-gradient(135deg, rgba(20,30,25,0.95), rgba(10,15,12,0.95));
+            padding: 15px 45px; border-radius: 6px;
+            border-left: 5px solid #2e7d32; border-right: 5px solid #1565c0;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.7);
+            z-index: 5; backdrop-filter: blur(10px);
+        }
+
+        .hud-panel { text-align: center; min-width: 120px; }
+        .hud-panel span {
+            display: block; font-size: 1.8rem; font-weight: 800;
+            font-family: 'Courier New', monospace; letter-spacing: 1px;
+        }
+        .hud-panel label { font-size: 0.7rem; color: #b0bec5; text-transform: uppercase; letter-spacing: 2px; font-weight: bold; }
+
+        /* Painel de Controle de Frota e Câmera */
+        #controls-panel {
+            position: absolute; bottom: 25px; left: 25px;
+            background: rgba(15,20,18,0.9); padding: 20px;
+            border-radius: 8px; border: 1px solid #37474f; z-index: 5;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+        .control-row { margin-bottom: 8px; font-size: 0.85rem; color: #b0bec5; }
+        .key { background: #37474f; color: #fff; padding: 3px 8px; border-radius: 4px; font-family: monospace; font-weight: bold; border-bottom: 2px solid #212121; }
+
+        /* Telas de Interface */
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(10,15,12,0.98), rgba(5,10,7,0.99));
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 30px; box-sizing: border-box; text-align: center; z-index: 10;
+        }
+
+        h1 { color: #81c784; margin: 0; font-size: 2.8rem; text-transform: uppercase; letter-spacing: 4px; font-weight: 900; }
+        .subtitle { font-style: italic; color: #a5d6a7; margin-bottom: 30px; font-size: 1.05rem; letter-spacing: 1px; }
+
+        .btn {
+            background: #2e7d32; color: white; border: none; padding: 15px 50px;
+            font-size: 1.05rem; border-radius: 4px; cursor: pointer; font-weight: bold;
+            text-transform: uppercase; transition: all 0.2s ease; margin-top: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4); letter-spacing: 1px;
+        }
+        .btn:hover { background: #388e3c; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.6); }
+
+        .briefing-box {
+            background: rgba(255,255,255,0.01); border: 1px solid rgba(129, 199, 132, 0.2);
+            padding: 25px; border-radius: 6px; text-align: left; max-width: 600px; font-size: 0.95rem; line-height: 1.7;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="hud">
+        <div class="hud-panel">
+            <span id="txt-grain" style="color: #ffca28;">0%</span>
+            <label>Graneleiro</label>
+        </div>
+        <div class="hud-panel">
+            <span id="txt-silo" style="color: #42a5f5;">0000 kg</span>
+            <label>Carga Coletada</label>
+        </div>
+        <div class="hud-panel">
+            <span id="txt-eco" style="color: #66bb6a;">100%</span>
+            <label>Uso Eficiente</label>
+        </div>
+    </div>
+
+    <div id="controls-panel">
+        <label style="font-size: 0.75rem; text-transform: uppercase; color: #81c784; font-weight: 800; display:block; margin-bottom:12px; letter-spacing:1px;">Logística de Maquinário</label>
+        <div class="control-row"><span class="key">1</span> Selecionar Colheitadeira Pro</div>
+        <div class="control-row"><span class="key">2</span> Selecionar Trator de Plantio</div>
+        <div class="control-row" style="margin-top: 15px;"><span class="key">C</span> Alternar Câmera (Cabine / Externa)</div>
+        <div style="margin-top: 15px; font-size: 0.7rem; color: #ffb74d; max-width: 200px;">Controles: Use as setas do teclado para acelerar e guiar as rodas.</div>
+    </div>
+
+    <div id="start-menu" class="overlay">
+        <h1>AGROSIM PRO: SIMULADOR DE ALTA FIDELIDADE</h1>
+        <p class="subtitle">“Agro forte, futuro sustentável: equilíbrio entre produção e meio ambiente”</p>
+        
+        <div class="briefing-box">
+            <strong>🌾 ESPECIFICAÇÕES TÉCNICAS DA OPERAÇÃO:</strong><br><br>
+            • <strong>Colheitadeira de Alta Capacidade (Tecla 1):</strong> Avance sobre o trigo maduro para recolher os grãos. Posicione o tubo lateral rente ao silo para efetuar a descarga mecânica automática.<br>
+            • <strong>Trator com Grade de Plantio (Tecla 2):</strong> Pilote sobre as clareiras de terra para recompor a vegetação de cobertura e estabilizar as taxas biológicas de carbono do solo.<br>
+            • <strong>Gestão de Solo:</strong> Operar em alta velocidade por muito tempo causa desgaste físico à estrutura do campo. Gerencie o ritmo das máquinas.
+        </div>
+        <button class="btn" onclick="initSimulationWorld()">Ligar Sistemas</button>
+    </div>
+
+    <div id="end-menu" class="overlay" style="display: none;">
+        <h2 id="end-title" style="font-size: 2.5rem;">Relatório Técnico de Produtividade</h2>
+        <p id="end-desc" style="max-width: 580px; margin: 25px 0; line-height: 1.7; font-size: 1rem; color: #cfd8dc;"></p>
+        <button class="btn" onclick="location.reload()">Refazer Planejamento</button>
+    </div>
+
+    <script>
+        let scene, camera, renderer, activeVehicleGroup, reelMesh, exhaustParticles = [];
+        let gameActive = false;
+        let wheatField = [];
+        
+        // Estados Dinâmicos
+        let activeVehicleType = 'harvester'; 
+        let cameraViewMode = 'external'; // 'external' ou 'cabin'
+        let coreStats = { siloWeight: 0, ecoIndex: 100 };
+        
+        // Atributos de Engenharia Física dos Automóveis
+        let vehicles = {
+            harvester: { x: 0, z: 25, angle: Math.PI, speed: 0, maxSpeed: 0.32, accel: 0.005, cargo: 0, color: 0x1b5e20, bodyW: 2.6, bodyH: 2.0, bodyL: 4.8 },
+            tractor: { x: 12, z: 25, angle: Math.PI, speed: 0, maxSpeed: 0.52, accel: 0.010, cargo: 0, color: 0x0d47a1, bodyW: 2.2, bodyH: 1.8, bodyL: 3.8 }
+        };
+
+        let keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key in keys) keys[e.key] = true;
+            if (e.key === '1') changeActiveVehicle('harvester');
+            if (e.key === '2') changeActiveVehicle('tractor');
+            if (e.key.toLowerCase() === 'c') toggleCameraPOV();
+        });
+        document.addEventListener('keyup', (e) => { if (e.key in keys) keys[e.key] = false; });
+
+        function toggleCameraPOV() {
+            cameraViewMode = (cameraViewMode === 'external') ? 'cabin' : 'external';
+        }
+
+        function changeActiveVehicle(type) {
+            if (!gameActive || activeVehicleType === type) return;
+            let currentData = vehicles[activeVehicleType];
+            
+            activeVehicleType = type;
+            scene.remove(activeVehicleGroup);
+            buildRealisticMachine();
+            
+            // Transferência física de posicionamento geográfico entre chassis
+            vehicles[activeVehicleType].x = currentData.x;
+            vehicles[activeVehicleType].z = currentData.z;
+            vehicles[activeVehicleType].angle = currentData.angle;
+
+            document.getElementById('txt-grain').innerText = vehicles[activeVehicleType].cargo + "%";
+        }
+
+        function initSimulationWorld() {
+            document.getElementById('start-menu').style.display = 'none';
+
+            // Configuração do Motor Gráfico 3D
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x111613);
+            scene.fog = new THREE.FogExp2(0x111613, 0.014);
+
+            camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            // Iluminação Natural de Alta Definição
+            scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+            let mainSunLight = new THREE.DirectionalLight(0xfff8e7, 1.3);
+            mainSunLight.position.set(40, 60, 20);
+            scene.add(mainSunLight);
+
+            // Solo Texturizado e Sombreado
+            let landscapeGeo = new THREE.PlaneGeometry(180, 180);
+            let landscapeMat = new THREE.MeshStandardMaterial({ color: 0x2d1f18, roughness: 0.95 }); 
+            let landscape = new THREE.Mesh(landscapeGeo, landscapeMat);
+            landscape.rotation.x = -Math.PI / 2;
+            scene.add(landscape);
+
+            // Silo de Armazenamento de Grãos Metálico
+            let industrialSilo = new THREE.Group();
+            let cylinder = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 4.5, 12, 24), new THREE.MeshStandardMaterial({ color: 0x90a4ae, metalness: 0.6, roughness: 0.2 }));
+            cylinder.position.y = 6;
+            let cap = new THREE.Mesh(new THREE.ConeGeometry(4.7, 3, 24), new THREE.MeshStandardMaterial({ color: 0x455a64 }));
+            cap.position.y = 13.5;
+            industrialSilo.add(cylinder, cap);
+            industrialSilo.position.set(0, 0, -50); 
+            scene.add(industrialSilo);
+
+            // Montagem do Maquinário Inicial
+            buildRealisticMachine();
+            
+            // Plantação de Trigo Volumétrica Realista
+            generateDenseCropField();
+
+            gameActive = true;
+            window.addEventListener('resize', onWindowResize, false);
+            mainPhysicsLoop();
+        }
+
+        function buildRealisticMachine() {
+            activeVehicleGroup = new THREE.Group();
+            let spec = vehicles[activeVehicleType];
+
+            // Chassi/Carroceria estruturada do Automóvel
+            let mainChassis = new THREE.Mesh(new THREE.BoxGeometry(spec.bodyW, spec.bodyH, spec.bodyL), new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.3, metalness: 0.1 }));
+            mainChassis.position.y = 1.4;
+            activeVehicleGroup.add(mainChassis);
+
+            // Cabine de Vidro de Alta Visibilidade do Operador
+            let cabinGeo = new THREE.BoxGeometry(spec.bodyW * 0.75, 1.4, spec.bodyL * 0.35);
+            let cabinMat = new THREE.MeshStandardMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.35, roughness: 0.1 });
+            let cabin = new THREE.Mesh(cabinGeo, cabinMat);
+            cabin.position.set(0, 2.5, spec.bodyL * 0.25);
+            activeVehicleGroup.add(cabin);
+
+            // Escapamento Vertical Mecânico (Gera partículas de fumaça reais)
+            let pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.5), new THREE.MeshStandardMaterial({ color: 0x222 }));
+            pipe.position.set(spec.bodyW * 0.4, 2.2, spec.bodyL * 0.1);
+            activeVehicleGroup.add(pipe);
+
+            // Equipamentos e Implementos Funcionais Diferenciados
+            if (activeVehicleType === 'harvester') {
+                // Barra de Corte Frontal Larga e Molinete Regulador
+                let headerBox = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.5, 0.9), new THREE.MeshStandardMaterial({ color: 0x37474f, roughness: 0.6 }));
+                headerBox.position.set(0, 0.5, 2.7);
+                
+                reelMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 5.4, 8, 1, true), new THREE.MeshStandardMaterial({ color: 0xffa000, wireframe: true }));
+                reelMesh.rotation.z = Math.PI / 2;
+                reelMesh.position.set(0, 0.6, 2.8);
+                
+                // Cano Descarregador de Grãos Lateral Redesenhado
+                let dischargePipe = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 3.2), new THREE.MeshStandardMaterial({ color: 0xe0e0e0 }));
+                dischargePipe.rotation.z = Math.PI / 3.5;
+                dischargePipe.position.set(-1.8, 2.2, -0.6);
+                
+                activeVehicleGroup.add(headerBox, reelMesh, dischargePipe);
+            } else {
+                // Implemento Traseiro Pesado: Discos Semeadores de Arrasto Articulados
+                let seederFrame = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.4, 0.8), new THREE.MeshStandardMaterial({ color: 0x455a64 }));
+                seederFrame.position.set(0, 0.4, -2.4);
+                activeVehicleGroup.add(seederFrame);
+            }
+
+            // Conjunto de Rodas de Alta Flutuação Agrícola (Pneus Sulcados)
+            let tireMat = new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.95 });
+            let frontTireGeo = new THREE.CylinderGeometry(0.85, 0.85, 0.65, 14);
+            let backTireGeo = FrontTireGeo = new THREE.CylinderGeometry(0.65, 0.65, 0.55, 14);
+
+            let fl = new THREE.Mesh(frontTireGeo, tireMat); fl.rotation.z = Math.PI/2; fl.position.set(-spec.bodyW*0.65, 0.85, spec.bodyL*0.25);
+            let fr = new THREE.Mesh(frontTireGeo, tireMat); fr.rotation.z = Math.PI/2; fr.position.set(spec.bodyW*0.65, 0.85, spec.bodyL*0.25);
+            let bl = new THREE.Mesh(backTireGeo, tireMat);   bl.rotation.z = Math.PI/2; bl.position.set(-spec.bodyW*0.6, 0.65, -spec.bodyL*0.3);
+            let br = new THREE.Mesh(backTireGeo, tireMat);   br.rotation.z = Math.PI/2; br.position.set(spec.bodyW*0.6, 0.65, -spec.bodyL*0.3);
+            
+            activeVehicleGroup.add(fl, fr, bl, br);
+            scene.add(activeVehicleGroup);
+        }
+
+        function generateDenseCropField() {
+            // Geometria orgânica pontiaguda para dar impressão volumétrica real de grãos
+            let spikeGeo = new THREE.ConeGeometry(0.08, 1.5, 4);
+            let wheatMat = new THREE.MeshStandardMaterial({ color: 0xe5a93b, roughness: 0.7 }); 
+
+            for (let x = -55; x <= 55; x += 3.8) {
+                for (let z = -35; z <= 35; z += 3.2) {
+                    // Resguarda rotas de escoamento no Silo Norte
+                    if (Math.abs(x) < 14 && z < -18) continue;
+
+                    let plant = new THREE.Mesh(spikeGeo, wheatMat);
+                    // Adiciona dispersão natural randômica milimétrica para simular plantações do mundo real
+                    plant.position.set(x + Math.random()*1.2, 0.75, z + Math.random()*1.2);
+                    scene.add(plant);
+                    
+                    wheatField.push({ mesh: plant, active: true, x: plant.position.x, z: plant.position.z });
+                }
+            }
+        }
+
+        function updateSystemPhysics() {
+            let car = vehicles[activeVehicleType];
+
+            // Inércia mecânica e atrito realístico do pneu com o solo arenoso
+            if (keys.ArrowUp) car.speed = Math.min(car.speed + car.accel, car.maxSpeed);
+            else if (keys.ArrowDown) car.speed = Math.max(car.speed - car.accel, -car.maxSpeed * 0.4);
+            else car.speed *= 0.94; // Arrasto cinemático passivo da terra
+
+            if (keys.ArrowLeft && Math.abs(car.speed) > 0.01) car.angle += 0.03;
+            if (keys.ArrowRight && Math.abs(car.speed) > 0.01) car.angle -= 0.03;
+
+            car.x += car.speed * Math.sin(car.angle);
+            car.z += car.speed * Math.cos(car.angle);
+
+            // Limites Geográficos da Propriedade (Cercas invisíveis)
+            car.x = Math.max(-75, Math.min(75, car.x));
+            car.z = Math.max(-75, Math.min(75, car.z));
+
+            activeVehicleGroup.position.set(car.x, 0, car.z);
+            activeVehicleGroup.rotation.y = car.angle;
+
+            // Animação mecânica do molinete da plataforma de corte sincronizada à velocidade
+            if (activeVehicleType === 'harvester' && Math.abs(car.speed) > 0.01) {
+                reelMesh.rotation.x += car.speed * 0.55;
+            }
+
+            // Gerenciamento e Efeito de Partículas do Escapamento (Fumaça realista)
+            if (Math.random() < 0.4) {
+                let smokeGeo = new THREE.SphereGeometry(0.08 + Math.random()*0.1, 4, 4);
+                let smokeMat = new THREE.MeshBasicMaterial({ color: 0x555555, transparent: true, opacity: 0.4 });
+                let smoke = new THREE.Mesh(smokeGeo, smokeMat);
+                // Posiciona na boca do cano de descarga
+                smoke.position.set(car.x + Math.sin(car.angle)*0.5, 2.9, car.z + Math.cos(car.angle)*0.5);
+                scene.add(smoke);
+                exhaustParticles.push(smoke);
+            }
+            
+            // Move e drena a opacidade das fumaças ativas
+            for (let i = exhaustParticles.length - 1; i >= 0; i--) {
+                let p = exhaustParticles[i];
+                p.position.y += 0.04;
+                p.material.opacity -= 0.015;
+                if (p.material.opacity <= 0) {
+                    scene.remove(p);
+                    exhaustParticles.splice(i, 1);
+                }
+            }
+
+            // Sistema Avançado Dinâmico de Câmera Multiponto
+            if (cameraViewMode === 'external') {
+                // Visão Panorâmica Traseira de Terceira Pessoa (Smooth Follow)
+                camera.position.set(car.x - Math.sin(car.angle) * 12, 7.5, car.z - Math.cos(car.angle) * 12);
+                camera.lookAt(car.x, 1.4, car.z);
+            } else {
+                // Visão Interna Realista da Cabine (Cockpit POV)
+                let headX = car.x + Math.sin(car.angle) * (car.bodyL * 0.25);
+                let headZ = car.z + Math.cos(car.angle) * (car.bodyL * 0.25);
+                camera.position.set(headX, 2.5, headZ);
+                
+                // Direciona o foco do olho da câmera exatamente para a frente da rota do trator
+                let lookTargetX = car.x + Math.sin(car.angle) * 20;
+                let lookTargetZ = car.z + Math.cos(car.angle) * 20;
+                camera.lookAt(lookTargetX, 1.4, lookTargetZ);
+            }
+
+            // Lógica de Descarga Física Automatizada no Complexo de Silos
+            let distToSilo = Math.hypot(car.x - 0, car.z - (-50));
+            if (distToSilo < 8.5 && activeVehicleType === 'harvester' && car.cargo > 0) {
+                coreStats.siloWeight += car.cargo * 20;
+                car.cargo = 0;
+                document.getElementById('txt-grain').innerText = "0%";
+                document.getElementById('txt-silo').innerText = coreStats.siloWeight + " kg";
+
+                // Critério de Vitória Realista do Agrinho
+                if (coreStats.siloWeight >= 2000 && coreStats.ecoIndex >= 70) triggerEndGame(true);
+            }
+
+            // Varredura de Interação de Matriz com a Plantação Realista
+            let frontBladeX = car.x + Math.sin(car.angle) * (car.bodyL * 0.5);
+            let frontBladeZ = car.z + Math.cos(car.angle) * (car.bodyL * 0.5);
+
+            wheatField.forEach(plant => {
+                let checkDist = Math.hypot(frontBladeX - plant.x, frontBladeZ - plant.z);
+
+                if (checkDist < 2.6) {
+                    // Execução 1: Colheitadeira recolhendo e limpando as linhas cultivadas
+                    if (plant.active && activeVehicleType === 'harvester' && car.cargo < 100) {
+                        plant.active = false;
+                        scene.remove(plant.mesh); // Remove o trigo colhido do campo 3D
+                        car.cargo = Math.min(100, car.cargo + 4);
+                        document.getElementById('txt-grain').innerText = car.cargo + "%";
+                    } 
+                    // Execução 2: Trator com grade semeando e fazendo brotar nova biomassa
+                    else if (!plant.active && activeVehicleType === 'tractor') {
+                        plant.active = true;
+                        scene.add(plant.mesh); // Regenera o elemento botânico no solo
+                        plant.mesh.scale.set(1, 0.15, 1); // Nasce inicialmente como broto rasteiro realista
+                        coreStats.ecoIndex = Math.min(100, coreStats.ecoIndex + 0.6);
+                        document.getElementById('txt-eco').innerText = Math.round(coreStats.ecoIndex) + "%";
+                    }
+                }
+            });
+
+            // Coleta contínua e pesada em velocidade não regulada causa perda de microvida na terra
+            if (activeVehicleType === 'harvester' && Math.abs(car.speed) > car.maxSpeed * 0.75) {
+                coreStats.ecoIndex = Math.max(0, coreStats.ecoIndex - 0.05);
+                document.getElementById('txt-eco').innerText = Math.round(coreStats.ecoIndex) + "%";
+            }
+
+            if (coreStats.ecoIndex <= 0) triggerEndGame(false);
+        }
+
+        function mainPhysicsLoop() {
+            if (!gameActive) return;
+            requestAnimationFrame(mainPhysicsLoop);
+            updateSystemPhysics();
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function triggerEndGame(victory) {
+            gameActive = false;
+            const menu = document.getElementById('end-menu');
+            const title = document.getElementById('end-title');
+            const desc = document.getElementById('end-desc');
+
+            if (victory) {
+                title.innerText = "Safra Tecnológica de Ouro! 🏅🏆";
+                title.style.color = "#66bb6a";
+                desc.innerText = `Gerenciamento exemplar de maquinários reais! Você estocou ${coreStats.siloWeight}kg monitorando o fluxo de descarga e revezou as frotas para garantir a restauração vegetal por plantio direto. A integridade ambiental foi preservada em ${Math.round(coreStats.ecoIndex)}%!`;
+            } else {
+                title.innerText = "Laudo Técnico: Solo Exaurido ❌";
+                title.style.color = "#ef5350";
+                desc.innerText = "A atividade agrícola foi interrompida na fazenda. O tráfego pesado operado em alta aceleração contínua compactou o solo e destruiu a cobertura biológica natural da gleba. Equilibre a produção usando o Trator Semeador (Tecla 2).";
+            }
+            menu.style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
